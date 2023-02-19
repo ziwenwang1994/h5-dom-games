@@ -36,9 +36,14 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        border-radius: 8px;
+        border-radius: 4px;
         margin: 1px;
         background: #6cabfc;
+
+        font-size: 28px;
+        font-family: Arial, Helvetica, sans-serif;
+        font-weight: 600;
+        color: #282828;
     }
 </style>
 
@@ -71,6 +76,7 @@
 
         set value(val) {
             this._value = val;
+            this.dom.innerText = val > 0 ? String(val) : "";
         }
     }
 
@@ -107,10 +113,8 @@
 
         _onMouseDown(e) {
             e.preventDefault();
-            if (e.target.classList.contains("block")) {
-                this._isMouseDown = true;
-                this._startPos = [e.clientX, e.clientY];
-            }
+            this._isMouseDown = true;
+            this._startPos = [e.clientX, e.clientY];
         }
 
         _onMouseUp(e) {
@@ -121,6 +125,9 @@
             const dx = this._endPos[0] - this._startPos[0];
             const dy = this._endPos[1] - this._startPos[1];
             let movementData = null;
+            if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
+                return;
+            }
             if (Math.abs(dx) > Math.abs(dy)) {
                 movementData = {
                     direction: dx > 0 ? DIRECTION.RIGHT : DIRECTION.LEFT,
@@ -136,12 +143,113 @@
         }
 
         _processBlock({ direction }) {
-            console.log(direction)
+            let tmpNums = [];
+            if (direction === DIRECTION.LEFT) {
+                for (let row = 0; row < 4; row++) {
+                    for (let i = row * 4 + 3; i > row * 4; i--) {
+                        if (!this._blockNumbers[i]) {
+                            continue;
+                        }
+                        if (this._blockNumbers[i] === this._blockNumbers[i - 1]) {
+                            this._blockNumbers[i] = 0;
+                            this._blockNumbers[i - 1] = this._blockNumbers[i - 1] * 2;
+                        }
+                    }
+                    const tmpBlockNumsRow1 = this._blockNumbers.slice(row * 4, row * 4 + 4).filter(el => el);
+                    const tmp = [];
+                    for (let i = 0; i < 4 - tmpBlockNumsRow1.length; i++) {
+                        tmp.push(0);
+                    }
+                    tmpNums = tmpNums.concat(tmpBlockNumsRow1).concat(tmp);
+                }
+            }
+            if (direction === DIRECTION.RIGHT) {
+                for (let row = 0; row < 4; row++) {
+                    for (let i = row * 4; i < row * 4 + 3; i++) {
+                        if (!this._blockNumbers[i]) {
+                            continue;
+                        }
+                        if (this._blockNumbers[i] === this._blockNumbers[i + 1]) {
+                            this._blockNumbers[i] = 0;
+                            this._blockNumbers[i + 1] = this._blockNumbers[i + 1] * 2;
+                        }
+                    }
+                    const tmpBlockNumsRow1 = this._blockNumbers.slice(row * 4, row * 4 + 4).filter(el => el);
+                    const tmp = [];
+                    for (let i = 0; i < 4 - tmpBlockNumsRow1.length; i++) {
+                        tmp.push(0);
+                    }
+                    tmpNums = tmpNums.concat(tmp).concat(tmpBlockNumsRow1);
+                }
+            }
+            if (direction === DIRECTION.UP) {
+                for (let col = 0; col < 4; col++) {
+                    for (let i = col + 12; i >= 0; i -= 4) {
+                        if (!this._blockNumbers[i]) {
+                            continue;
+                        }
+                        if (this._blockNumbers[i] === this._blockNumbers[i - 4]) {
+                            this._blockNumbers[i] = 0;
+                            this._blockNumbers[i - 4] = this._blockNumbers[i - 4] * 2;
+                        }
+                    }
+                    const tmpBlockNumsCol1 = [this._blockNumbers[col], this._blockNumbers[col + 4], this._blockNumbers[col + 8], this._blockNumbers[col + 12]].filter(el => el);
+
+                    for (let i = 0; i < 4; i++) {
+                        tmpNums[col + i * 4] = (tmpBlockNumsCol1[i] || 0);
+                    }
+                }
+            }
+            if (direction === DIRECTION.DOWN) {
+                for (let col = 0; col < 4; col++) {
+                    for (let i = col; i < 11 + col; i += 4) {
+                        if (!this._blockNumbers[i]) {
+                            continue;
+                        }
+                        if (this._blockNumbers[i] === this._blockNumbers[i + 4]) {
+                            this._blockNumbers[i] = 0;
+                            this._blockNumbers[i + 4] = this._blockNumbers[i + 4] * 2;
+                        }
+                    }
+                    const tmpBlockNumsCol1 = [this._blockNumbers[col + 12], this._blockNumbers[col + 8], this._blockNumbers[col + 4], this._blockNumbers[col]].filter(el => el);
+                    for (let i = 0; i < 4; i++) {
+                        tmpNums[12 + col - i * 4] = (tmpBlockNumsCol1[i] || 0);
+                    }
+                }
+            }
+            if (tmpNums.length === 16) {
+                this._blockNumbers = tmpNums;
+                this._generateNewNum();
+                this._updateUI();
+            }
+
+        }
+
+        _generateNewNum() {
+            const availableIndexes = [];
+            this._blockNumbers.forEach((num, index) => {
+                if (num > 0) {
+
+                }
+                availableIndexes.push(index);
+            })
+            const randomIndex = availableIndexes[Math.floor(Math.random() * availableIndexes.length)];
+            const newNum = Date.now() % 10 > 4 ? 2 : 4;
+            this._blockNumbers[randomIndex] = newNum;
+        }
+
+        _updateUI() {
+            this._blockNumbers.forEach((num, index) => {
+                const block = this._blocks[index];
+                if (num != block.value) {
+                    block.value = num;
+                }
+            });
         }
 
         init() {
-            this._blockNumbers[0] = 2;
-            this._blockNumbers[1] = 2;
+            this._blockNumbers[10] = 2;
+            this._blockNumbers[14] = 2;
             this._blocks = this._blockNumbers.map((num, index) => {
                 const block = document.createElement("div");
                 const value = this._getBlockNumber(num);
