@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048</title>
+</head>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+    }
+
+    #app {
+        min-height: 100vh;
+        overflow: auto;
+    }
+
+    #game {
+        margin: 0 auto;
+        width: 320px;
+        height: 320px;
+        border: 1px #eee solid;
+
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    #game .block {
+        width: 78px;
+        height: 78px;
+        box-sizing: border-box;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 8px;
+        margin: 1px;
+        background: #6cabfc;
+    }
+</style>
+
+<body>
+    <div id="app">
+        <div id="game"></div>
+    </div>
+</body>
+<script>
+    const game = document.getElementById("game");
+    class Direction {
+        LEFT = "LEFT";
+        RIGHT = "RIGHT";
+        UP = "UP";
+        DOWN = "DOWN";
+    }
+    const DIRECTION = new Direction();
+
+    class Block2048 {
+        constructor({ value, index, dom }) {
+            this.dom = dom || document.createElement("div");
+            this.x = index % 4;
+            this.y = Math.floor(index / 4);
+            this.index = this.x + 4 * this.y;
+            this.dom.innerText = value;
+            this.dom.x = this.x;
+            this.dom.y = this.y;
+            this._value = value;
+        }
+
+        set value(val) {
+            this._value = val;
+        }
+    }
+
+    class Game2048 {
+        activeEffect = null;
+        _blockNumbers = [];
+        _blocks = [];
+        _isMouseDown = false;
+        _startPos = [0, 0];
+        _endPos = [0, 0];
+        constructor() {
+            for (let i = 0; i < 16; i++) {
+                this._blockNumbers.push(0);
+            }
+        }
+
+        _watchEffect(effect) {
+            activeEffect = effect;
+            effect();
+            activeEffect = null;
+        }
+
+        _getBlockNumber(num) {
+            return num > 0 ? String(num) : ""
+        }
+        _render() {
+            this._blocks.forEach(block => {
+                game.appendChild(block.dom);
+            });
+            // this will point to #game dom without bind
+            game.addEventListener("mousedown", this._onMouseDown.bind(this));
+            game.addEventListener("mouseup", this._onMouseUp.bind(this));
+        }
+
+        _onMouseDown(e) {
+            e.preventDefault();
+            if (e.target.classList.contains("block")) {
+                this._isMouseDown = true;
+                this._startPos = [e.clientX, e.clientY];
+            }
+        }
+
+        _onMouseUp(e) {
+            e.preventDefault();
+
+            this._endPos = [e.clientX, e.clientY];
+            this._isMouseDown = false;
+            const dx = this._endPos[0] - this._startPos[0];
+            const dy = this._endPos[1] - this._startPos[1];
+            let movementData = null;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                movementData = {
+                    direction: dx > 0 ? DIRECTION.RIGHT : DIRECTION.LEFT,
+                };
+            } else {
+                movementData =
+                {
+                    direction: dy > 0 ? DIRECTION.DOWN : DIRECTION.UP,
+                };
+            }
+            this._processBlock(movementData);
+            this._chosenBlock = null;
+        }
+
+        _processBlock({ direction }) {
+            console.log(direction)
+        }
+
+        init() {
+            this._blockNumbers[0] = 2;
+            this._blockNumbers[1] = 2;
+            this._blocks = this._blockNumbers.map((num, index) => {
+                const block = document.createElement("div");
+                const value = this._getBlockNumber(num);
+                block.classList.add("block");
+
+                const blockEntity = new Block2048(
+                    {
+                        value: value,
+                        index: index,
+                        dom: block
+                    }
+                );
+
+                return blockEntity;
+            });
+            this._render();
+        }
+    }
+
+    const game2048 = new Game2048();
+    game2048.init();
+</script>
+
+</html>
