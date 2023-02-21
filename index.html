@@ -7,6 +7,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Games</title>
 </head>
+<script>
+    function clone(source) {
+        if (source instanceof Object) {
+            let res = {};
+            if (source instanceof Array) {
+                res = [...source];
+            } else if (source instanceof Date) {
+                const ts = source.getTime()
+                res = new Date(ts);
+            } else if (source instanceof Symbol) {
+                res = source;
+            } else if (source instanceof Map) {
+                res = new Map(Array.from(source.entries()));
+            } else if (source instanceof WeakMap) {
+                res = new WeakMap(Array.from(source.entries()));
+            } else if (source instanceof Set) {
+                res = new Set(Array.from(source));
+            } else if (source instanceof WeakSet) {
+                res = new WeakSet(Array.from(source));
+            } else if (source instanceof Function) {
+                res = new Function('return ' + source.toString())();
+            } {
+                Object.assign(res, source);
+            }
+            return res;
+        }
+        return source;
+    }
+    function Reactive() {
+        const self = new WeakMap()
+        class Reactive {
+            constructor(value) {
+                self.set("value", clone());
+            }
+        }
+    }
+</script>
 
 <body>
     <h1>Ziwen's H5 Games</h1>
