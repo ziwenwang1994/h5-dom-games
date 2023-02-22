@@ -149,7 +149,7 @@
                 const filledPositions = [];
                 if (direction === Direction.LEFT) {
                     for (let row = 0; row < 4; row++) {
-                        for (let i in [1, 1, 1]) {
+                        for (let i in [1, 1]) {
                             for (let col = 3; col > 0; col--) {
                                 const pos = `${col},${row}`;
                                 const posLeft = `${col - 1},${row}`;
@@ -170,7 +170,7 @@
                 }
                 if (direction === Direction.RIGHT) {
                     for (let row = 0; row < 4; row++) {
-                        for (let i in [1, 1, 1]) {
+                        for (let i in [1, 1]) {
                             for (let col = 0; col < 3; col++) {
                                 const pos = `${col},${row}`;
                                 const posRight = `${col + 1},${row}`;
@@ -192,7 +192,7 @@
                 }
                 if (direction === Direction.DOWN) {
                     for (let col = 0; col < 4; col++) {
-                        for (let i in [1, 1, 1]) {
+                        for (let i in [1, 1]) {
                             for (let row = 0; row < 3; row++) {
                                 const pos = `${col},${row}`;
                                 const posDown = `${col},${row + 1}`;
@@ -213,7 +213,7 @@
                 }
                 if (direction === Direction.UP) {
                     for (let col = 0; col < 4; col++) {
-                        for (let i in [1, 1, 1]) {
+                        for (let i in [1, 1]) {
                             const rowValue = [];
                             for (let row = 3; row >= 1; row--) {
                                 const pos = `${col},${row}`;
