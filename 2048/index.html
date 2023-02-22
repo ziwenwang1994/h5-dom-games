@@ -11,266 +11,291 @@
     * {
         margin: 0;
         padding: 0;
+        font-family: Arial, Helvetica, sans-serif;
     }
 
     #app {
         min-height: 100vh;
-        overflow: auto;
     }
 
-    #game {
-        margin: 0 auto;
-        width: 320px;
-        height: 320px;
-        border: 1px #eee solid;
+    #app h2 {
 
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
+        text-align: center;
+    }
+
+    #app #game {
+        position: relative;
+        width: 240px;
+        height: 240px;
+        margin: 8px auto;
+    }
+
+    #app .btn {
+        border: #6d8fce 1px solid;
+        border-radius: 4px;
+        display: block;
+        margin: 8px auto;
+        background: #779fe9;
+        text-align: center;
+        padding: 4px 16px;
+        font-weight: 600;
     }
 
     #game .block {
-        width: 78px;
-        height: 78px;
-        box-sizing: border-box;
+        position: absolute;
+        width: 56px;
+        height: 56px;
+        background: #2e3e5c;
         display: flex;
         justify-content: center;
         align-items: center;
-        border-radius: 4px;
-        margin: 1px;
-        background: #6cabfc;
-
-        font-size: 28px;
+        color: #fff;
+        font-size: 16px;
+        font-weight: 700;
         font-family: Arial, Helvetica, sans-serif;
-        font-weight: 600;
-        color: #282828;
+
     }
 </style>
 
 <body>
+    <script>
+        class Direction {
+            static UP = "UP";
+            static DOWN = "DOWN";
+            static LEFT = "LEFT";
+            static RIGHT = "RIGHT";
+        }
+
+
+        class Block {
+            constructor(value) {
+                this._value = value;
+                this._position = "0,0";
+                this.dom = document.createElement("div");
+                this.dom.classList.add("block");
+                this.dom.innerText = value;
+            }
+
+            set position(val) {
+                this._position = val;
+                const [x, y] = this._position.split(",");
+                this.dom.pos = this._position;
+                this.dom.style.left = x * 60 + "px";
+                this.dom.style.top = y * 60 + "px";
+            }
+
+            get position() {
+                return this._position;
+            }
+
+            set value(val) {
+                this._value = val;
+                if (this.dom) {
+                    this.dom.innerText = val;
+                }
+            }
+
+            get value() {
+                return this._value;
+            }
+        }
+
+        class Game2048 {
+            game = document.getElementById("game");
+            blockMap = new Map();
+            updating = false;
+            startPointX = 0;
+            startPointY = 0;
+            endPointX = 0;
+            endPointY = 0;
+            constructor() {
+                for (let x = 0; x < 4; x++) {
+                    for (let y = 0; y < 4; y++) {
+                        const block = new Block(y === 0 && x < 2 ? 2 : "");
+                        const position = `${x},${y}`;
+                        block.position = position;
+                        this.blockMap.set(position, block);
+                        this.game.appendChild(block.dom);
+                    }
+                }
+
+                const app = document.getElementById("app");
+                const button = document.createElement("button");
+                button.innerText = "Reset";
+                button.classList.add("btn");
+                button.addEventListener("click", this.reset.bind(this));
+                app.appendChild(button);
+            }
+
+            start() {
+                this.game.addEventListener("mousedown", this.onTouchStart.bind(this))
+                this.game.addEventListener("mouseup", this.onTouchEnd.bind(this))
+                this.game.addEventListener("touchstart", this.onTouchStart.bind(this))
+                this.game.addEventListener("touchend", this.onTouchEnd.bind(this))
+            }
+
+            processBlocks(direction) {
+                if (!direction) {
+                    return;
+                }
+
+                if (this.updating) {
+                    return;
+                }
+
+                this.updating = true;
+
+                let updated = false;
+                const filledPositions = [];
+                if (direction === Direction.LEFT) {
+                    for (let row = 0; row < 4; row++) {
+                        for (let i in [1, 1, 1]) {
+                            for (let col = 3; col > 0; col--) {
+                                const pos = `${col},${row}`;
+                                const posLeft = `${col - 1},${row}`;
+                                if (this.blockMap.get(pos).value) {
+                                    if (this.blockMap.get(posLeft).value === this.blockMap.get(pos).value) {
+                                        this.blockMap.get(pos).value = "";
+                                        this.blockMap.get(posLeft).value = this.blockMap.get(posLeft).value * 2;
+                                        updated = true;
+                                    } else if (!this.blockMap.get(posLeft).value) {
+                                        this.blockMap.get(posLeft).value = this.blockMap.get(pos).value;
+                                        this.blockMap.get(pos).value = "";
+                                        updated = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if (direction === Direction.RIGHT) {
+                    for (let row = 0; row < 4; row++) {
+                        for (let i in [1, 1, 1]) {
+                            for (let col = 0; col < 3; col++) {
+                                const pos = `${col},${row}`;
+                                const posRight = `${col + 1},${row}`;
+                                if (this.blockMap.get(pos).value) {
+                                    if (this.blockMap.get(posRight).value === this.blockMap.get(pos).value) {
+                                        this.blockMap.get(pos).value = "";
+                                        this.blockMap.get(posRight).value = this.blockMap.get(posRight).value * 2;
+                                        updated = true;
+                                    } else if (!this.blockMap.get(posRight).value) {
+                                        this.blockMap.get(posRight).value = this.blockMap.get(pos).value;
+                                        this.blockMap.get(pos).value = "";
+                                        updated = true;
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                }
+                if (direction === Direction.DOWN) {
+                    for (let col = 0; col < 4; col++) {
+                        for (let i in [1, 1, 1]) {
+                            for (let row = 0; row < 3; row++) {
+                                const pos = `${col},${row}`;
+                                const posDown = `${col},${row + 1}`;
+                                if (this.blockMap.get(pos).value) {
+                                    if (this.blockMap.get(posDown).value === this.blockMap.get(pos).value) {
+                                        this.blockMap.get(pos).value = "";
+                                        this.blockMap.get(posDown).value = this.blockMap.get(posDown).value * 2;
+                                        updated = true;
+                                    } else if (!this.blockMap.get(posDown).value) {
+                                        this.blockMap.get(posDown).value = this.blockMap.get(pos).value;
+                                        this.blockMap.get(pos).value = "";
+                                        updated = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if (direction === Direction.UP) {
+                    for (let col = 0; col < 4; col++) {
+                        for (let i in [1, 1, 1]) {
+                            const rowValue = [];
+                            for (let row = 3; row >= 1; row--) {
+                                const pos = `${col},${row}`;
+                                const posUp = `${col},${row - 1}`;
+                                if (this.blockMap.get(pos).value) {
+                                    if (this.blockMap.get(posUp).value === this.blockMap.get(pos).value) {
+                                        this.blockMap.get(pos).value = "";
+                                        this.blockMap.get(posUp).value = this.blockMap.get(posUp).value * 2;
+                                        updated = true;
+                                    } else if (!this.blockMap.get(posUp).value) {
+                                        this.blockMap.get(posUp).value = this.blockMap.get(pos).value;
+                                        this.blockMap.get(pos).value = "";
+                                        updated = true;
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                }
+
+
+                if (updated) {
+                    const unfilledPos = Array.from(this.blockMap.keys()).filter(pos => !this.blockMap.get(pos).value);
+                    const index = Math.floor(unfilledPos.length * Math.random());
+                    this.blockMap.get(unfilledPos[index]).value = Date.now() % 10 > 6 ? 4 : 2;
+                }
+
+                this.updating = false;
+            }
+
+            onTouchStart(e) {
+                e.preventDefault();
+                this.startPointX = e.clientX;
+                this.startPointY = e.clientY;
+            }
+
+            onTouchEnd(e) {
+                e.preventDefault();
+                let direction = "";
+                this.endPointX = e.clientX;
+                this.endPointY = e.clientY;
+                if (Math.abs(this.startPointX - this.endPointX) < 20 && Math.abs(this.startPointY - this.endPointY) < 20) {
+                    this.startPointX = 0;
+                    this.startPointY = 0;
+                    this.endPointX = 0;
+                    this.endPointY = 0;
+                    return;
+                }
+
+                if (Math.abs(this.startPointX - this.endPointX) > Math.abs(this.startPointY - this.endPointY)) {
+                    direction = this.startPointX - this.endPointX > 0 ? Direction.LEFT : Direction.RIGHT;
+                } else {
+                    direction = this.startPointY - this.endPointY > 0 ? Direction.UP : Direction.DOWN;
+                }
+                this.processBlocks(direction);
+                this.startPointX = 0;
+                this.startPointY = 0;
+                this.endPointX = 0;
+                this.endPointY = 0;
+                direction = "";
+            }
+
+            reset() {
+                this.blockMap.forEach((block, pos) => {
+                    block.value = "";
+                    if (["0,0", "1,0"].includes(pos)) {
+                        block.value = 2;
+                    }
+                })
+            }
+        }
+
+    </script>
     <div id="app">
+        <h2>2048</h2>
         <div id="game"></div>
     </div>
 </body>
 <script>
-    const game = document.getElementById("game");
-    class Direction {
-        LEFT = "LEFT";
-        RIGHT = "RIGHT";
-        UP = "UP";
-        DOWN = "DOWN";
-    }
-    const DIRECTION = new Direction();
-
-    class Block2048 {
-        constructor({ value, index, dom }) {
-            this.dom = dom || document.createElement("div");
-            this.x = index % 4;
-            this.y = Math.floor(index / 4);
-            this.index = this.x + 4 * this.y;
-            this.dom.innerText = value;
-            this.dom.x = this.x;
-            this.dom.y = this.y;
-            this._value = value;
-        }
-
-        set value(val) {
-            this._value = val;
-            this.dom.innerText = val > 0 ? String(val) : "";
-        }
-    }
-
-    class Game2048 {
-        activeEffect = null;
-        _blockNumbers = [];
-        _blocks = [];
-        _isMouseDown = false;
-        _startPos = [0, 0];
-        _endPos = [0, 0];
-        constructor() {
-            for (let i = 0; i < 16; i++) {
-                this._blockNumbers.push(0);
-            }
-        }
-
-        _watchEffect(effect) {
-            activeEffect = effect;
-            effect();
-            activeEffect = null;
-        }
-
-        _getBlockNumber(num) {
-            return num > 0 ? String(num) : ""
-        }
-        _render() {
-            this._blocks.forEach(block => {
-                game.appendChild(block.dom);
-            });
-            // this will point to #game dom without bind
-            game.addEventListener("mousedown", this._onMouseDown.bind(this));
-            game.addEventListener("mouseup", this._onMouseUp.bind(this));
-        }
-
-        _onMouseDown(e) {
-            e.preventDefault();
-            this._isMouseDown = true;
-            this._startPos = [e.clientX, e.clientY];
-        }
-
-        _onMouseUp(e) {
-            e.preventDefault();
-
-            this._endPos = [e.clientX, e.clientY];
-            this._isMouseDown = false;
-            const dx = this._endPos[0] - this._startPos[0];
-            const dy = this._endPos[1] - this._startPos[1];
-            let movementData = null;
-            if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
-                return;
-            }
-            if (Math.abs(dx) > Math.abs(dy)) {
-                movementData = {
-                    direction: dx > 0 ? DIRECTION.RIGHT : DIRECTION.LEFT,
-                };
-            } else {
-                movementData =
-                {
-                    direction: dy > 0 ? DIRECTION.DOWN : DIRECTION.UP,
-                };
-            }
-            this._processBlock(movementData);
-            this._chosenBlock = null;
-        }
-
-        _processBlock({ direction }) {
-            let tmpNums = [];
-            if (direction === DIRECTION.LEFT) {
-                for (let row = 0; row < 4; row++) {
-                    for (let i = row * 4 + 3; i > row * 4; i--) {
-                        if (!this._blockNumbers[i]) {
-                            continue;
-                        }
-                        if (this._blockNumbers[i] === this._blockNumbers[i - 1]) {
-                            this._blockNumbers[i] = 0;
-                            this._blockNumbers[i - 1] = this._blockNumbers[i - 1] * 2;
-                        }
-                    }
-                    const tmpBlockNumsRow1 = this._blockNumbers.slice(row * 4, row * 4 + 4).filter(el => el);
-                    const tmp = [];
-                    for (let i = 0; i < 4 - tmpBlockNumsRow1.length; i++) {
-                        tmp.push(0);
-                    }
-                    tmpNums = tmpNums.concat(tmpBlockNumsRow1).concat(tmp);
-                }
-            }
-            if (direction === DIRECTION.RIGHT) {
-                for (let row = 0; row < 4; row++) {
-                    for (let i = row * 4; i < row * 4 + 3; i++) {
-                        if (!this._blockNumbers[i]) {
-                            continue;
-                        }
-                        if (this._blockNumbers[i] === this._blockNumbers[i + 1]) {
-                            this._blockNumbers[i] = 0;
-                            this._blockNumbers[i + 1] = this._blockNumbers[i + 1] * 2;
-                        }
-                    }
-                    const tmpBlockNumsRow1 = this._blockNumbers.slice(row * 4, row * 4 + 4).filter(el => el);
-                    const tmp = [];
-                    for (let i = 0; i < 4 - tmpBlockNumsRow1.length; i++) {
-                        tmp.push(0);
-                    }
-                    tmpNums = tmpNums.concat(tmp).concat(tmpBlockNumsRow1);
-                }
-            }
-            if (direction === DIRECTION.UP) {
-                for (let col = 0; col < 4; col++) {
-                    for (let i = col + 12; i >= 0; i -= 4) {
-                        if (!this._blockNumbers[i]) {
-                            continue;
-                        }
-                        if (this._blockNumbers[i] === this._blockNumbers[i - 4]) {
-                            this._blockNumbers[i] = 0;
-                            this._blockNumbers[i - 4] = this._blockNumbers[i - 4] * 2;
-                        }
-                    }
-                    const tmpBlockNumsCol1 = [this._blockNumbers[col], this._blockNumbers[col + 4], this._blockNumbers[col + 8], this._blockNumbers[col + 12]].filter(el => el);
-
-                    for (let i = 0; i < 4; i++) {
-                        tmpNums[col + i * 4] = (tmpBlockNumsCol1[i] || 0);
-                    }
-                }
-            }
-            if (direction === DIRECTION.DOWN) {
-                for (let col = 0; col < 4; col++) {
-                    for (let i = col; i < 11 + col; i += 4) {
-                        if (!this._blockNumbers[i]) {
-                            continue;
-                        }
-                        if (this._blockNumbers[i] === this._blockNumbers[i + 4]) {
-                            this._blockNumbers[i] = 0;
-                            this._blockNumbers[i + 4] = this._blockNumbers[i + 4] * 2;
-                        }
-                    }
-                    const tmpBlockNumsCol1 = [this._blockNumbers[col + 12], this._blockNumbers[col + 8], this._blockNumbers[col + 4], this._blockNumbers[col]].filter(el => el);
-                    for (let i = 0; i < 4; i++) {
-                        tmpNums[12 + col - i * 4] = (tmpBlockNumsCol1[i] || 0);
-                    }
-                }
-            }
-            if (tmpNums.length === 16) {
-                this._blockNumbers = tmpNums;
-                this._generateNewNum();
-                this._updateUI();
-            }
-
-        }
-
-        _generateNewNum() {
-            const availableIndexes = [];
-            this._blockNumbers.forEach((num, index) => {
-                if (num > 0) {
-
-                }
-                availableIndexes.push(index);
-            })
-            const randomIndex = availableIndexes[Math.floor(Math.random() * availableIndexes.length)];
-            const newNum = Date.now() % 10 > 4 ? 2 : 4;
-            this._blockNumbers[randomIndex] = newNum;
-        }
-
-        _updateUI() {
-            this._blockNumbers.forEach((num, index) => {
-                const block = this._blocks[index];
-                if (num != block.value) {
-                    block.value = num;
-                }
-            });
-        }
-
-        init() {
-            this._blockNumbers[10] = 2;
-            this._blockNumbers[14] = 2;
-            this._blocks = this._blockNumbers.map((num, index) => {
-                const block = document.createElement("div");
-                const value = this._getBlockNumber(num);
-                block.classList.add("block");
-
-                const blockEntity = new Block2048(
-                    {
-                        value: value,
-                        index: index,
-                        dom: block
-                    }
-                );
-
-                return blockEntity;
-            });
-            this._render();
-        }
-    }
-
-    const game2048 = new Game2048();
-    game2048.init();
+    const game = new Game2048();
+    game.start();
 </script>
 
 </html>
