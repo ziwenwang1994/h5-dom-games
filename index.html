@@ -8,41 +8,195 @@
     <title>Games</title>
 </head>
 <script>
-    function clone(source) {
-        if (source instanceof Object) {
-            let res = {};
-            if (source instanceof Array) {
-                res = [...source];
-            } else if (source instanceof Date) {
-                const ts = source.getTime()
-                res = new Date(ts);
-            } else if (source instanceof Symbol) {
-                res = source;
-            } else if (source instanceof Map) {
-                res = new Map(Array.from(source.entries()));
-            } else if (source instanceof WeakMap) {
-                res = new WeakMap(Array.from(source.entries()));
-            } else if (source instanceof Set) {
-                res = new Set(Array.from(source));
-            } else if (source instanceof WeakSet) {
-                res = new WeakSet(Array.from(source));
-            } else if (source instanceof Function) {
-                res = new Function('return ' + source.toString())();
-            } {
-                Object.assign(res, source);
+    class Utils {
+        static clone(source) {
+            if (source instanceof Object) {
+                let res = {};
+                if (source instanceof Array) {
+                    res = [...source];
+                } else if (source instanceof Date) {
+                    const ts = source.getTime();
+                    res = new Date(ts);
+                } else if (source instanceof Symbol) {
+                    res = source;
+                } else if (source instanceof Map) {
+                    res = new Map(Array.from(source.entries()));
+                } else if (source instanceof WeakMap) {
+                    res = new WeakMap(Array.from(source.entries()));
+                } else if (source instanceof Set) {
+                    res = new Set(Array.from(source));
+                } else if (source instanceof WeakSet) {
+                    res = new WeakSet(Array.from(source));
+                } else if (source instanceof Function) {
+                    res = new Function("return " + source.toString())();
+                }
+                {
+                    Object.assign(res, source);
+                }
+                return res;
             }
-            return res;
+            return source;
         }
-        return source;
     }
-    function Reactive() {
-        const self = new WeakMap()
+
+    function reactive(val) {
+        const $this = new Map();
+        const _update = (self) => {
+            if ($this.get("_updating")) {
+                return;
+            }
+            $this.set("_updating", true);
+            $this.get("_effectMap").forEach((effect) => {
+                try {
+                    effect(self);
+                } catch (e) {
+                    console.error(e);
+                }
+            });
+            $this.set("_updating", false);
+        };
+        const _watchProperty = (self, source) => {
+            const obj = source || $this.get("_value");
+            let _stringifiedArray = $this.get("_stringifiedArray");
+            if (obj instanceof Set) {
+                obj.add = function () {
+                    for (let i = 0; i < arguments.length; i++) {
+                        let value = arguments[i];
+                        if (value instanceof Object) {
+                            _watchProperty(self, value);
+                        }
+                    }
+                    Set.prototype.add.apply(this, arguments);
+                    _update(this);
+                };
+                obj.delete = function () {
+                    for (let i = 0; i < arguments.length; i++) {
+                        let value = arguments[i];
+                        if (value instanceof Object) {
+                            _watchProperty(self, value);
+                        }
+                    }
+                    Set.prototype.delete.apply(this, arguments);
+                    _update(this);
+                };
+                return;
+            }
+            if (obj instanceof Map) {
+                obj.set = function () {
+                    for (let i = 0; i < arguments.length; i++) {
+                        let value = arguments[i];
+                        if (value instanceof Object) {
+                            _watchProperty(self, value);
+                        }
+                    }
+                    Map.prototype.set.apply(this, arguments);
+                    _update(this);
+                };
+                obj.delete = function () {
+                    for (let i = 0; i < arguments.length; i++) {
+                        let value = arguments[i];
+                        if (self instanceof Object) {
+                            _watchProperty(self, value);
+                        }
+                    }
+                    Map.prototype.delete.apply(this, arguments);
+                    _update(this);
+                };
+                return;
+            }
+            if (obj instanceof Symbol) {
+                return;
+            }
+            if (obj instanceof Object) {
+                Object.keys(obj).forEach((key) => {
+                    let value = obj[key];
+                    if (typeof value === "object") {
+                        _watchProperty(self, value);
+                    }
+                    Object.defineProperty(obj, key, {
+                        get() {
+                            return value;
+                        },
+                        set(val) {
+                            value = val;
+                            if (typeof value === "object") {
+                                _watchProperty(self, value);
+                            }
+                            _update(self);
+                        },
+                    });
+                });
+            }
+        };
+
         class Reactive {
-            constructor(value) {
-                self.set("value", clone());
+            constructor(val) {
+                $this.set("_value", Utils.clone(val));
+                $this.set("_effectMap", new Map());
+                $this.set("_updating", false);
+                $this.set(
+                    "_stringifiedArray",
+                    Array.isArray(this._value) ? JSON.stringify(this._value) : ""
+                );
+                if (typeof this.value === "object") {
+                    _watchProperty(this);
+                }
+            }
+
+            useEffect(effectId, effect) {
+                if (typeof effect === "function") {
+                    $this.get("_effectMap").set(effectId, effect);
+                }
+                return this;
+            }
+
+            commitEffect(effectId, ...args) {
+                if (typeof $this.get("_effectMap").get(effectId) === "function") {
+                    $this.get("_effectMap").get(effectId)(...args);
+                }
+            }
+
+            commitEffects() {
+                _update(this);
+            }
+
+            removeEffect(effectId, callback = () => { }) {
+                this._effectMap.delete(effectId);
+                callback();
+            }
+
+            clearEffects(effectId, callback = () => { }) {
+                this._effectMap = new Map();
+                callback();
+            }
+
+            get value() {
+                return $this.get("_value");
+            }
+
+            set value(val) {
+                let _stringifiedArray = $this.get("_stringifiedArray");
+                if (this.value != val) {
+                    $this.set("_value", val);
+                    if (this.value instanceof Array) {
+                        _stringifiedArray = JSON.stringify(this.value);
+                        $this.set("_stringifiedArray", _stringifiedArray);
+                    } else {
+                        if (_stringifiedArray) {
+                            $this.set("_stringifiedArray", "");
+                        }
+                    }
+                    if (typeof this.value === "object") {
+                        _watchProperty(this);
+                    }
+                    _update(this);
+                }
             }
         }
+
+        return new Reactive(val);
     }
+
 </script>
 
 <body>
